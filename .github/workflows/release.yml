@@ -1,0 +1,33 @@
+name: Automated Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version bump (e.g. major, minor, patch)'
+        required: true
+        default: 'patch'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Node.js (for semantic-release)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Generate Changelog and Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx semantic-release

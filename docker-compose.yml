@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: nithin_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nithin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-marketai2026}
+      POSTGRES_DB: ${POSTGRES_DB:-market_ai}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nithin} -d ${POSTGRES_DB:-market_ai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: nithin_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:

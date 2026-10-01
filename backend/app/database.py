@@ -1,0 +1,23 @@
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.orm import declarative_base
+from app.config import settings
+
+# Create async engine for PostgreSQL (TimescaleDB compatible)
+engine = create_async_engine(
+    settings.database_url,
+    echo=settings.ENVIRONMENT == "development",
+)
+
+# Async session factory
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+
+Base = declarative_base()
+
+async def get_db():
+    """Dependency for FastAPI to get a DB session."""
+    async with AsyncSessionLocal() as session:
+        yield session
