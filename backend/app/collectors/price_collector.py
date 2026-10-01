@@ -1,6 +1,5 @@
 import yfinance as yf
 import pandas as pd
-from datetime import datetime
 
 class PriceCollector:
     """Fetches real-time and historical pricing data using yfinance (Free Tier)."""
