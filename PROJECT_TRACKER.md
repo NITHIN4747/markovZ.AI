@@ -16,3 +16,6 @@ Last Updated: 2026-10-01 | Updated By: HR
 | TASK-008 | Git init + active branch   | DevOps          | DONE        | 2026-10-01 | .git, ci.yml          |
 | TASK-009 | OHLCV TimescaleDB Model    | BE Specialist   | DONE        | 2026-10-01 | /models/ohlcv.py      |
 | TASK-010 | yfinance Price Collector   | BE Specialist   | DONE        | 2026-10-01 | price_collector.py    |
+| TASK-011 | Market FastAPI Endpoints   | BE Specialist   | DONE        | 2026-10-01 | api/market.py, main.py|
+| TASK-012 | Celery Background Workers  | BE Specialist   | DONE        | 2026-10-01 | worker.py             |
+| TASK-013 | Live React Dashboard UI    | FE Specialist   | DONE        | 2026-10-01 | /frontend/src/        |
