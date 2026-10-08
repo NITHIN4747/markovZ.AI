@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.api import market
-from app.config import settings
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
