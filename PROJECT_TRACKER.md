@@ -26,6 +26,6 @@ Last Updated: 2026-10-01 | Updated By: HR
 ## Phase 3: Technicals & History Engine
 | ID       | Task Description           | Assignee        | Status      | Date       | Artifacts             |
 | -------- | -------------------------- | --------------- | ----------- | ---------- | --------------------- |
-| TASK-017 | Tech Analysis Engine (RSI) | BE Specialist   | IN PROGRESS | 2026-10-09 | engine/technicals.py  |
-| TASK-018 | Technicals API Endpoints   | BE Specialist   | TODO        | -          | api/market.py         |
-| TASK-019 | Frontend Tech Integration  | FE Specialist   | TODO        | -          | Dashboard.tsx         |
+| TASK-017 | Tech Analysis Engine (RSI) | BE Specialist   | DONE        | 2026-10-09 | engine/technicals.py  |
+| TASK-018 | Technicals API Endpoints   | BE Specialist   | DONE        | 2026-10-09 | api/market.py         |
+| TASK-019 | Frontend Tech Integration  | FE Specialist   | DONE        | 2026-10-09 | Dashboard.tsx         |

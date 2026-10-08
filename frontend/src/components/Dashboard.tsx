@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import './Dashboard.css';
 
+interface TechnicalData {
+  rsi: number;
+  macd: number;
+  macd_signal: number;
+  sma_20: number;
+  sma_50: number;
+}
+
 interface MarketData {
   symbol: string;
   time: string;
@@ -13,15 +21,24 @@ interface MarketData {
 
 export default function Dashboard() {
   const [data, setData] = useState<MarketData | null>(null);
+  const [technicals, setTechnicals] = useState<TechnicalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchMarketData = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/market/state/NIFTY');
-      if (!response.ok) throw new Error('Network response was not ok');
-      const result = await response.json();
-      setData(result.data);
+      const [stateResponse, techResponse] = await Promise.all([
+        fetch('http://localhost:8000/api/v1/market/state/NIFTY'),
+        fetch('http://localhost:8000/api/v1/market/technicals/NIFTY')
+      ]);
+      
+      if (!stateResponse.ok || !techResponse.ok) throw new Error('Network response was not ok');
+      
+      const stateResult = await stateResponse.json();
+      const techResult = await techResponse.json();
+      
+      setData(stateResult.data);
+      setTechnicals(techResult.technicals);
       setError(null);
     } catch (err) {
       setError('Failed to fetch live data. Ensure backend is running.');
@@ -83,6 +100,34 @@ export default function Dashboard() {
                 <span className="stat-value">{data.volume.toLocaleString('en-IN')}</span>
               </div>
             </div>
+
+            {technicals && (
+              <div className="technicals-section">
+                <h3 className="section-title">Technical Indicators</h3>
+                <div className="stats-grid">
+                  <div className="stat-box">
+                    <span className="stat-label">RSI (14)</span>
+                    <span className={`stat-value ${technicals.rsi > 70 ? 'text-red' : technicals.rsi < 30 ? 'text-green' : ''}`}>
+                      {technicals.rsi.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="stat-box">
+                    <span className="stat-label">MACD</span>
+                    <span className={`stat-value ${technicals.macd > technicals.macd_signal ? 'text-green' : 'text-red'}`}>
+                      {technicals.macd.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="stat-box">
+                    <span className="stat-label">SMA 20</span>
+                    <span className="stat-value">₹{technicals.sma_20.toFixed(2)}</span>
+                  </div>
+                  <div className="stat-box">
+                    <span className="stat-label">SMA 50</span>
+                    <span className="stat-value">₹{technicals.sma_50.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : null}
       </main>
