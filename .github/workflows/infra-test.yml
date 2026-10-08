@@ -1,0 +1,42 @@
+name: infra-test
+on: [pull_request]
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    services:
+      floci:
+        image: floci/floci:latest
+        ports: ["4566:4566"]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: hashicorp/setup-terraform@v3
+      
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: infra
+        
+      - name: IaC Security Scan (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: infra
+          
+      - name: Apply to Emulator
+        run: |
+          terraform init -backend=false
+          terraform validate
+          terraform apply -auto-approve -var-file=envs/local.tfvars
+        working-directory: infra
+        
+      - name: Smoke Test Emulator
+        run: aws --endpoint-url http://localhost:4566 ssm get-parameters-by-path --path /market-ai --recursive
+        env: 
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_DEFAULT_REGION: ap-south-1
+          
+      - name: Destroy Emulator
+        run: terraform destroy -auto-approve -var-file=envs/local.tfvars
+        working-directory: infra
+        if: always()

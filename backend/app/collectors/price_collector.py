@@ -1,5 +1,13 @@
-import yfinance as yf
 import pandas as pd
+from datetime import datetime
+import random
+
+try:
+    import yfinance as yf
+    YFINANCE_AVAILABLE = True
+except ImportError:
+    YFINANCE_AVAILABLE = False
+    print("WARNING: yfinance not installed. Using simulated mock data for local development.")
 
 class PriceCollector:
     """Fetches real-time and historical pricing data using yfinance (Free Tier)."""
@@ -15,6 +23,22 @@ class PriceCollector:
 
     async def fetch_latest_price(self, symbol: str) -> dict | None:
         """Fetch the latest live price and volume for a given symbol."""
+        if not YFINANCE_AVAILABLE:
+            # Simulated data for local dev when yfinance fails to compile
+            base_prices = {"NIFTY": 22500.0, "BANKNIFTY": 48000.0, "RELIANCE": 2900.0, "HDFCBANK": 1450.0}
+            base = base_prices.get(symbol, 1000.0)
+            variation = base * 0.005 # 0.5% variation
+            current = base + random.uniform(-variation, variation)
+            return {
+                "symbol": symbol,
+                "time": datetime.now(),
+                "open": base,
+                "high": current + 10.0,
+                "low": current - 10.0,
+                "close": current,
+                "volume": random.randint(100000, 5000000)
+            }
+
         yf_ticker = self.symbol_map.get(symbol, f"{symbol}.NS")
         ticker = yf.Ticker(yf_ticker)
         

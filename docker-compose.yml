@@ -33,6 +33,13 @@ services:
       timeout: 5s
       retries: 5
 
+  floci:
+    image: floci/floci:latest
+    container_name: nithin_floci
+    ports:
+      - "4566:4566"
+    restart: unless-stopped
+
 volumes:
   pgdata:
   redisdata:
