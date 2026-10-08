@@ -19,3 +19,13 @@ Last Updated: 2026-10-01 | Updated By: HR
 | TASK-011 | Market FastAPI Endpoints   | BE Specialist   | DONE        | 2026-10-01 | api/market.py, main.py|
 | TASK-012 | Celery Background Workers  | BE Specialist   | DONE        | 2026-10-01 | worker.py             |
 | TASK-013 | Live React Dashboard UI    | FE Specialist   | DONE        | 2026-10-01 | /frontend/src/        |
+| TASK-014 | Floci local CI pipeline    | DevOps          | DONE        | 2026-10-09 | infra-test.yml        |
+| TASK-015 | Terraform Modules (EC2)    | DevOps          | DONE        | 2026-10-09 | /infra/               |
+| TASK-016 | Docker GHCR CD Pipeline    | DevOps          | DONE        | 2026-10-09 | docker-publish.yml    |
+
+## Phase 3: Technicals & History Engine
+| ID       | Task Description           | Assignee        | Status      | Date       | Artifacts             |
+| -------- | -------------------------- | --------------- | ----------- | ---------- | --------------------- |
+| TASK-017 | Tech Analysis Engine (RSI) | BE Specialist   | IN PROGRESS | 2026-10-09 | engine/technicals.py  |
+| TASK-018 | Technicals API Endpoints   | BE Specialist   | TODO        | -          | api/market.py         |
+| TASK-019 | Frontend Tech Integration  | FE Specialist   | TODO        | -          | Dashboard.tsx         |
