@@ -5,19 +5,17 @@ class TechnicalAnalyzer:
 
     @staticmethod
     def calculate_rsi(data: pd.DataFrame, window: int = 14) -> pd.DataFrame:
-        """Calculate Relative Strength Index (RSI)."""
+        """Calculate RSI using Wilder smoothing (ewm with alpha=1/window)."""
         delta = data['close'].diff()
-        gain = (delta.where(delta > 0, 0)).fillna(0)
-        loss = (-delta.where(delta < 0, 0)).fillna(0)
-        
-        avg_gain = gain.rolling(window=window, min_periods=1).mean()
-        avg_loss = loss.rolling(window=window, min_periods=1).mean()
-        
-        rs = avg_gain / avg_loss
+        gain  = delta.clip(lower=0)
+        loss  = (-delta).clip(lower=0)
+
+        alpha    = 1 / window
+        avg_gain = gain.ewm(alpha=alpha, min_periods=window, adjust=False).mean()
+        avg_loss = loss.ewm(alpha=alpha, min_periods=window, adjust=False).mean()
+
+        rs = avg_gain / avg_loss.replace(0, float('nan'))
         data['rsi'] = 100 - (100 / (1 + rs))
-        
-        # Handle edge case where loss is 0
-        data.loc[avg_loss == 0, 'rsi'] = 100
         return data
 
     @staticmethod

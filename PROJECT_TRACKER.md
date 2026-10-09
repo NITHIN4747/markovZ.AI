@@ -29,3 +29,11 @@ Last Updated: 2026-10-01 | Updated By: HR
 | TASK-017 | Tech Analysis Engine (RSI) | BE Specialist   | DONE        | 2026-10-09 | engine/technicals.py  |
 | TASK-018 | Technicals API Endpoints   | BE Specialist   | DONE        | 2026-10-09 | api/market.py         |
 | TASK-019 | Frontend Tech Integration  | FE Specialist   | DONE        | 2026-10-09 | Dashboard.tsx         |
+
+## Phase 4: LLM Strategy Engine
+| ID       | Task Description           | Assignee        | Status      | Date       | Artifacts             |
+| -------- | -------------------------- | --------------- | ----------- | ---------- | --------------------- |
+| TASK-020 | Coherent DataSource + Tests| BE Specialist   | DONE        | 2026-10-09 | engine/mock_data.py   |
+| TASK-021 | LLM Router (Groq→NIM→Gem)  | BE Specialist   | TODO        | -          | engine/llm_client.py  |
+| TASK-022 | Celery-cached AI Insights  | BE Specialist   | TODO        | -          | engine/ai_strategist  |
+| TASK-023 | Frontend AI Insights Panel | FE Specialist   | TODO        | -          | Dashboard.tsx         |

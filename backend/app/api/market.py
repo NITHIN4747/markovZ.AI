@@ -2,94 +2,87 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.collectors.price_collector import PriceCollector
+from app.engine.mock_data import get_data_source
 from app.engine.technicals import TechnicalAnalyzer
 import pandas as pd
 
 router = APIRouter(prefix="/api/v1/market", tags=["market"])
-collector = PriceCollector()
+analyzer = TechnicalAnalyzer()
+
 
 @router.get("/state/{symbol}")
 async def get_market_state(symbol: str, db: AsyncSession = Depends(get_db)):
     """
-    Get the absolute latest live market state for a specific symbol.
-    For Phase 1, it hits yfinance directly to guarantee live data.
+    Get the latest live market bar for a symbol.
+    The close price is the last bar of the shared DataSource,
+    so it is guaranteed to match the technicals endpoint.
     """
     try:
-        latest_data = await collector.fetch_latest_price(symbol.upper())
-        if not latest_data:
-            raise HTTPException(status_code=404, detail="Symbol data not found or market closed.")
-            
+        bar = get_data_source().latest_bar(symbol.upper())
         return {
             "status": "success",
-            "data": latest_data
+            "data": {
+                "symbol": bar.symbol if hasattr(bar, "symbol") else symbol.upper(),
+                "time":   bar.time.isoformat(),
+                "open":   bar.open,
+                "high":   bar.high,
+                "low":    bar.low,
+                "close":  bar.close,
+                "volume": bar.volume,
+            }
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/technicals/{symbol}")
 async def get_market_technicals(symbol: str):
     """
-    Fetch historical data and compute live technical indicators (RSI, MACD, SMA).
+    Compute RSI, MACD and SMAs from the same DataSource as /state.
+    All numbers are internally consistent.
     """
     try:
-        # Fetch 60 days of historical data to get accurate EMAs/SMAs
-        try:
-            import yfinance as yf
-            yf_ticker = f"{symbol.upper()}.NS"
-            if symbol.upper() == "NIFTY":
-                yf_ticker = "^NSEI"
-            elif symbol.upper() == "BANKNIFTY":
-                yf_ticker = "^NSEBANK"
-                
-            ticker = yf.Ticker(yf_ticker)
-            hist = ticker.history(period="60d", interval="1d")
-            
-            if hist.empty:
-                raise HTTPException(status_code=404, detail="No historical data found.")
-                
-            # Clean dataframe for engine
-            hist = hist.rename(columns={"Open": "open", "High": "high", "Low": "low", "Close": "close", "Volume": "volume"})
-            hist.index.name = "time"
-            
-        except ImportError:
-            # Fallback for local development when yfinance fails to install
-            import numpy as np
-            dates = pd.date_range(end=pd.Timestamp.now(), periods=60)
-            base_price = 22500.0 if symbol.upper() == "NIFTY" else 1000.0
-            
-            # Generate somewhat realistic looking data
-            closes = base_price + np.cumsum(np.random.normal(0, base_price * 0.005, 60))
-            hist = pd.DataFrame({
-                'open': closes + np.random.normal(0, 10, 60),
-                'high': closes + np.abs(np.random.normal(0, 20, 60)),
-                'low': closes - np.abs(np.random.normal(0, 20, 60)),
-                'close': closes,
-                'volume': np.random.randint(100000, 5000000, 60)
-            }, index=dates)
-            hist.index.name = "time"
-        
-        # Run through Technical Engine
-        analyzer = TechnicalAnalyzer()
-        enriched = analyzer.enrich_data(hist)
-        
-        # Get the absolute latest day's technicals
-        latest_technicals = enriched.iloc[-1].to_dict()
-        
-        # Convert timestamps for JSON serialization
-        if pd.api.types.is_datetime64_any_dtype(latest_technicals.get('time')):
-             latest_technicals['time'] = latest_technicals['time'].isoformat()
-        
+        hist = get_data_source().history(symbol.upper())
+
+        if len(hist) < 35:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Only {len(hist)} bars — need ≥35 for valid MACD signal."
+            )
+
+        enriched = analyzer.enrich_data(hist.copy())
+        last     = enriched.iloc[-1]
+
+        # Compute code-side signal: how many indicators agree?
+        price  = last["close"]
+        sma_20 = last["sma_20"]
+        sma_50 = last["sma_50"]
+        rsi    = last["rsi"]
+        macd   = last["macd"]
+        macd_s = last["macd_signal"]
+
+        bullish_count = sum([
+            price > sma_20,
+            price > sma_50,
+            macd  > macd_s,
+            rsi   < 70,          # not overbought
+        ])
+        signal = "BULLISH" if bullish_count >= 3 else ("BEARISH" if bullish_count <= 1 else "NEUTRAL")
+
         return {
-            "status": "success",
-            "symbol": symbol.upper(),
+            "status":  "success",
+            "symbol":  symbol.upper(),
+            "signal":  signal,                       # code-computed, not LLM
+            "agreement_score": f"{bullish_count}/4", # how many indicators agree
             "technicals": {
-                "rsi": latest_technicals.get("rsi", 0),
-                "macd": latest_technicals.get("macd", 0),
-                "macd_signal": latest_technicals.get("macd_signal", 0),
-                "sma_20": latest_technicals.get("sma_20", 0),
-                "sma_50": latest_technicals.get("sma_50", 0)
+                "rsi":         round(float(rsi),    2),
+                "macd":        round(float(macd),   2),
+                "macd_signal": round(float(macd_s), 2),
+                "sma_20":      round(float(sma_20), 2),
+                "sma_50":      round(float(sma_50), 2),
             }
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
