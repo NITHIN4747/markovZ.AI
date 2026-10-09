@@ -29,8 +29,9 @@ jobs:
           ruff check backend/app
           
       - name: Run tests
+        working-directory: ./backend
         run: |
-          pytest backend/tests/ || echo "No tests written yet, bypassing for Phase 0"
+          pytest tests/ -v
 
   frontend-test:
     runs-on: ubuntu-latest

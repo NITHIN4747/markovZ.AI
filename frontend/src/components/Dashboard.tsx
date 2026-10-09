@@ -24,6 +24,7 @@ export default function Dashboard() {
   const [technicals, setTechnicals] = useState<TechnicalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [clock, setClock] = useState(new Date());
 
   const fetchMarketData = async () => {
     try {
@@ -49,8 +50,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchMarketData();
-    const interval = setInterval(fetchMarketData, 60000); // Poll every minute
-    return () => clearInterval(interval);
+    const dataInterval  = setInterval(fetchMarketData, 60000);
+    const clockInterval = setInterval(() => setClock(new Date()), 1000);
+    return () => {
+      clearInterval(dataInterval);
+      clearInterval(clockInterval);
+    };
   }, []);
 
   const isPositive = data && data.close >= data.open;
@@ -60,7 +65,8 @@ export default function Dashboard() {
       <header className="dashboard-header">
         <h1>NITHIN-MARKET AI</h1>
         <div className="status-indicator">
-          <span className="pulse-dot"></span> Live Market Intelligence
+          <span className="pulse-dot"></span>
+          Demo Mode &nbsp;·&nbsp; {clock.toLocaleTimeString('en-IN')}
         </div>
       </header>
 
@@ -73,27 +79,27 @@ export default function Dashboard() {
           <div className="market-card glass-panel">
             <div className="card-header">
               <h2>{data.symbol}</h2>
-              <span className="time-stamp">{new Date(data.time).toLocaleTimeString()}</span>
+              <span className="time-stamp">Last data: {new Date(data.time).toLocaleDateString('en-IN')}</span>
             </div>
             
             <div className="price-display">
               <span className={`current-price ${isPositive ? 'text-green' : 'text-red'}`}>
-                ₹{data.close.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                ₹{data.close.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
 
             <div className="stats-grid">
               <div className="stat-box">
                 <span className="stat-label">Open</span>
-                <span className="stat-value">₹{data.open.toLocaleString('en-IN')}</span>
+                <span className="stat-value">₹{data.open.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className="stat-box">
                 <span className="stat-label">High</span>
-                <span className="stat-value">₹{data.high.toLocaleString('en-IN')}</span>
+                <span className="stat-value">₹{data.high.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className="stat-box">
                 <span className="stat-label">Low</span>
-                <span className="stat-value">₹{data.low.toLocaleString('en-IN')}</span>
+                <span className="stat-value">₹{data.low.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className="stat-box">
                 <span className="stat-label">Volume</span>

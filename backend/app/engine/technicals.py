@@ -14,8 +14,10 @@ class TechnicalAnalyzer:
         avg_gain = gain.ewm(alpha=alpha, min_periods=window, adjust=False).mean()
         avg_loss = loss.ewm(alpha=alpha, min_periods=window, adjust=False).mean()
 
-        rs = avg_gain / avg_loss.replace(0, float('nan'))
+        # When avg_loss is 0: no down days in window → RSI = 100 (max strength)
+        rs = avg_gain / avg_loss
         data['rsi'] = 100 - (100 / (1 + rs))
+        data.loc[avg_loss == 0, 'rsi'] = 100.0
         return data
 
     @staticmethod
@@ -38,13 +40,13 @@ class TechnicalAnalyzer:
     def enrich_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """Run all technical calculations on a dataframe."""
         if data.empty or len(data) < 26:
-            # Not enough data to calculate technicals reliably
             return data
-            
+
         data = self.calculate_rsi(data)
         data = self.calculate_macd(data)
         data = self.calculate_sma(data, window=20)
         data = self.calculate_sma(data, window=50)
-        
-        # Drop rows with NaN values resulting from rolling windows
-        return data.fillna(0)
+
+        # Only fill NaN in the warmup rows (first 50), never overwrite valid values
+        data.iloc[:50] = data.iloc[:50].fillna(0)
+        return data
