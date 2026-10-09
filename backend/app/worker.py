@@ -18,6 +18,10 @@ celery_app.conf.update(
         "fetch-nifty-prices-every-minute": {
             "task": "app.worker.fetch_and_store_prices",
             "schedule": 60.0, # Run every 60 seconds
+        },
+        "generate-ai-insights-every-minute": {
+            "task": "app.worker.refresh_ai_insights",
+            "schedule": 60.0, # Run every 60 seconds (but ai_strategist skips if hash unchanged)
         }
     },
     timezone="Asia/Kolkata",
@@ -53,3 +57,15 @@ async def async_fetch_and_store():
 def fetch_and_store_prices():
     """Synchronous Celery wrapper for the async ingestion task."""
     asyncio.run(async_fetch_and_store())
+
+@celery_app.task
+def refresh_ai_insights():
+    """Trigger the AI Strategist to refresh insights if market state changed."""
+    from app.engine.ai_strategist import update_insight_if_needed
+    symbols = ["NIFTY", "BANKNIFTY", "RELIANCE", "HDFCBANK"]
+    
+    async def run_all():
+        for symbol in symbols:
+            await update_insight_if_needed(symbol)
+            
+    asyncio.run(run_all())
