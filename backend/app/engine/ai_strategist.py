@@ -7,29 +7,28 @@ import hashlib
 import json
 import logging
 from datetime import datetime
-import redis
-
 from app.config import settings
+from app.engine.cache import cache
 from app.engine.llm_client import LLMRouter, Provider
 from app.engine.mock_data import get_data_source
 from app.engine.technicals import TechnicalAnalyzer
 
 logger = logging.getLogger(__name__)
-redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
 
-# Initialize providers only if keys exist
-_providers = []
-if settings.GROQ_API_KEY:
-    _providers.append(Provider("Groq", "https://api.groq.com/openai/v1", settings.GROQ_API_KEY, "llama-3.1-70b-versatile"))
-if settings.NVIDIA_API_KEY:
-    _providers.append(Provider("NIM", "https://integrate.api.nvidia.com/v1", settings.NVIDIA_API_KEY, "meta/llama3-70b-instruct"))
-if settings.GEMINI_API_KEY:
-    # Google's OpenAI compatibility endpoint for Gemini
-    _providers.append(Provider("Gemini", "https://generativelanguage.googleapis.com/v1beta/openai", settings.GEMINI_API_KEY, "gemini-1.5-flash"))
-if settings.OPENROUTER_API_KEY:
-    _providers.append(Provider("OpenRouter", "https://openrouter.ai/api/v1", settings.OPENROUTER_API_KEY, "meta-llama/llama-3-8b-instruct:free"))
+def get_router() -> LLMRouter:
+    providers = []
+    if settings.GROQ_API_KEY:
+        providers.append(Provider("Groq", "https://api.groq.com/openai/v1", settings.GROQ_API_KEY, "qwen/qwen3.8-27b"))
+    if settings.NVIDIA_API_KEY:
+        providers.append(Provider("NIM", "https://integrate.api.nvidia.com/v1", settings.NVIDIA_API_KEY, "meta/llama-3.2-11b-vision-instruct"))
+    if settings.GEMINI_API_KEY:
+        # Google's OpenAI compatibility endpoint for Gemini
+        providers.append(Provider("Gemini", "https://generativelanguage.googleapis.com/v1beta/openai", settings.GEMINI_API_KEY, "gemini-2.5-flash"))
+    if settings.OPENROUTER_API_KEY:
+        providers.append(Provider("OpenRouter", "https://openrouter.ai/api/v1", settings.OPENROUTER_API_KEY, "meta-llama/llama-3-8b-instruct:free"))
+    return LLMRouter(providers)
 
-router = LLMRouter(_providers)
+router = get_router()
 analyzer = TechnicalAnalyzer()
 
 
@@ -77,24 +76,24 @@ async def update_insight_if_needed(symbol: str) -> dict:
     current_pointer_key = f"insight:current:{symbol.upper()}"
     
     # 1. Check if we already have an insight for this exact mathematical state
-    cached_insight = redis_client.get(cache_key)
+    cached_insight = cache.get(cache_key)
     if cached_insight:
         insight = json.loads(cached_insight)
         # Refresh the current pointer just in case
-        redis_client.set(current_pointer_key, cached_insight)
+        cache.set(current_pointer_key, cached_insight)
         return insight
         
-    # 2. No cache. Acquire lock so 5 workers don't call LLM simultaneously
+    # 2. No cache. Acquire lock so workers don't call LLM simultaneously
     lock_key = f"lock:insight:{symbol.upper()}"
-    if not redis_client.set(lock_key, "1", nx=True, ex=30):
+    if not cache.set(lock_key, "1", nx=True, ex=30):
         # Someone else is generating it. Return the LAST known insight for now.
-        last_known = redis_client.get(current_pointer_key)
+        last_known = cache.get(current_pointer_key)
         return json.loads(last_known) if last_known else {"signal": signal, "agreement_score": score, "reasoning": "Generating..."}
         
     try:
         # 3. Generate it
-        if not _providers:
-            reasoning = "No LLM API keys configured. Set GROQ_API_KEY or others in .env to enable AI insights."
+        if not router.providers:
+            reasoning = "No LLM API keys configured. Set GROQ_API_KEY, NVIDIA_API_KEY, or GEMINI_API_KEY in .env to enable AI insights."
         else:
             prompt = f"""
             Symbol: {symbol.upper()}
@@ -124,11 +123,11 @@ async def update_insight_if_needed(symbol: str) -> dict:
         insight_json = json.dumps(insight)
         
         # 4. Cache it permanently for this mathematical state
-        redis_client.set(cache_key, insight_json, ex=86400 * 7) # Keep for 7 days
+        cache.set(cache_key, insight_json, ex=86400 * 7) # Keep for 7 days
         # 5. Set it as the current active insight
-        redis_client.set(current_pointer_key, insight_json)
+        cache.set(current_pointer_key, insight_json)
         
         return insight
         
     finally:
-        redis_client.delete(lock_key)
+        cache.delete(lock_key)

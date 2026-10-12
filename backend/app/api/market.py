@@ -6,12 +6,11 @@ from app.engine.mock_data import get_data_source
 from app.engine.technicals import TechnicalAnalyzer
 from app.config import settings
 import pandas as pd
-import redis
 import json
+from app.engine.cache import cache
 
 router = APIRouter(prefix="/api/v1/market", tags=["market"])
 analyzer = TechnicalAnalyzer()
-redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 
 @router.get("/state/{symbol}")
@@ -94,25 +93,34 @@ async def get_market_technicals(symbol: str):
 @router.get("/insights/{symbol}")
 async def get_market_insights(symbol: str):
     """
-    Fetch the latest AI generated strategy from Redis.
-    This is ultra-fast and consumes zero API tokens per request.
+    Fetch the latest AI generated strategy from cache (Redis or in-memory).
+    If not cached yet, triggers an on-demand update.
     """
     try:
+        from app.engine.ai_strategist import update_insight_if_needed
         current_pointer_key = f"insight:current:{symbol.upper()}"
-        cached_insight = redis_client.get(current_pointer_key)
+        cached_insight = cache.get(current_pointer_key)
         
         if not cached_insight:
-            return {
-                "status": "success",
-                "symbol": symbol.upper(),
-                "insight": {
-                    "signal": "NEUTRAL",
-                    "agreement_score": "0/4",
-                    "reasoning": "Waiting for first AI generation...",
-                    "state_hash": None,
-                    "generated_at": None
+            try:
+                insight = await update_insight_if_needed(symbol)
+                return {
+                    "status": "success",
+                    "symbol": symbol.upper(),
+                    "insight": insight
                 }
-            }
+            except Exception as e:
+                return {
+                    "status": "success",
+                    "symbol": symbol.upper(),
+                    "insight": {
+                        "signal": "NEUTRAL",
+                        "agreement_score": "0/4",
+                        "reasoning": f"AI analysis temporarily initializing: {str(e)[:80]}",
+                        "state_hash": None,
+                        "generated_at": None
+                    }
+                }
             
         return {
             "status": "success",
